@@ -1,0 +1,4 @@
+
+{
+    "connectionString":"mongodb+srv://Admin:Adminkomal@memories.slsdj.mongodb.net/?retryWrites=true&w=majority&authSource=admin"
+}
