@@ -158,7 +158,7 @@ app.get("/get-all-stories",authenticateToken,async (req,res)=>{
 });
 
 //Route to handle images upload
-app.get("/image-upload",upload.single("image"),async (req,res)=>{
+app.post("/image-upload",upload.single("image"),async (req,res)=>{
     try{
         if(!req.file){
             return res.status(400).json({error:true,message:"No image uploaded"});
@@ -168,37 +168,170 @@ app.get("/image-upload",upload.single("image"),async (req,res)=>{
         res.status(201).json({imageUrl});
     }
     catch{
-        res.status(500).json({error:true,message:error.message});
+        res.status(500).json({error:true,message:"error.message"});
     }
     
 });
 
-// app.delete("/delete-image",async (req,res)=>{
-//     const {imageUrl} = req.query;
-//     if(!imageUrl){
-//         res.status(400).json({error:true,message:"imageUrl is required"});
-//     }
+app.delete("/delete-image",async (req,res)=>{
+    const {imageUrl} = req.query;
+    if(!imageUrl){
+        res.status(400).json({error:true,message:"imageUrl is required"});
+    }
 
-//     try{
-//         //extract the filename
-//         const filename  = path.basename(imageUrl);
+    try{
+        //extract the filename
+        const filename  = path.basename(imageUrl);
 
-//         //define the file path
-//         const filePath = path.join(__dirname,'uploads',filename);
+        //define the file path
+        const filePath = path.join(__dirname,'uploads',filename);
 
-//         if(fs.existsSync(filePath)){
-//             //delete the file from uploads folder
-//             fs.unlinkSync(filePath);
-//             res.status(200).json({message:"image deleted successfully"});
-//         }
-//         else{
-//             res.status(200).json({error:true,message:"image not found"});
-//         }
+        if(fs.existsSync(filePath)){
+            //delete the file from uploads folder
+            fs.unlinkSync(filePath);
+            res.status(200).json({message:"image deleted successfully"});
+        }
+        else{
+            res.status(200).json({error:true,message:"image not found"});
+        }
 
-//     }catch(error){
-//         res.status(500).json({error:true,message:error.message});
-//     }
-// });
+    }catch(error){
+        res.status(500).json({error:true,message:error.message});
+    }
+});
+
+app.put("/edit-story/:id",authenticateToken,async (req,res)=>{
+    const {id} = req.params;
+    const {title,story,visitedLocation,imageUrl,visitedDate} = req.body;
+    const {userId} = req.user;
+
+    if(!title||!story||!visitedLocation||!imageUrl||!visitedDate){
+        return res.status(400).json({error:true,message:"All fields are mandatory"});
+    }
+
+    const parsedVisitedDate = new Date(parseInt(visitedDate));
+    try{
+        //find the  story by id and ensure it belongs to the authenticated user
+        const Story = await Memory.findOne({_id:id,userId:userId});
+        if(!Story){
+            return res.status(404).json({error:true,message:"memory not found"});
+        }
+
+        const placeHolderImage = `http://localhost:8000/assets/placeholder.png`;
+        Story.title = title;
+        Story.story = story;
+        Story.visitedLocation = visitedLocation;
+        Story.imageUrl = imageUrl||placeHolderImage;
+        Story.visitedDate = parsedVisitedDate;
+
+        await Story.save();
+        res.status(200).json({
+            story:Story,
+            message:'Update successful'
+        });
+
+    }catch(error){
+        res.status(500).json({error:true,message:error.message});
+    } 
+
+});
+//working well but wrong message printed correct that later
+app.delete("/delete-story/:id", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.user;
+
+    try {
+        // Find the story by id and ensure it belongs to the authenticated user
+        const story = await Memory.findOne({ _id: id, userId: userId });
+        if (!story) {
+            return res.status(404).json({ error: true, message: "Memory not found" });
+        }
+
+        await Memory.deleteOne({ _id: id ,userId:userId});
+        const imageUrl = story.imageUrl;
+        const fileName = path.basename(imageUrl);
+
+        const filePath = path.join(__dirname,'uploads',filename);
+        fs.unlink(filePath,(err)=>{
+            if(err){
+                console.error("failed to delete");
+
+            }
+
+        });
+
+        res.status(200).json({
+            message: "Story deleted successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ error: true, message: error.message });
+    }
+});
+
+//update is favourite story
+// Update isFavourite
+app.patch("/update-is-favourite/:id", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { isFavourite } = req.body;
+    const { userId } = req.user;
+
+    try {
+        const Story = await Memory.findOne({ _id: id, userId: userId });
+
+        if (!Story) {
+            return res.status(404).json({ error: true, message: " story not found" });
+        }
+
+        Story.isFavourite = isFavourite;
+
+        await Story.save();
+        res.status(200).json({ story: Story, message: "Update Successful" });
+    } catch (error) {
+        res.status(500).json({ error: true, message: error.message });
+    }
+});
+
+//search stories
+app.get("/search-stories/",authenticateToken,async (req,res)=>{
+    const {query} = req.query;
+    const {userId} = req.user;
+    if(!query){
+        return res.status(404).json({error:true,message:"query is required"});
+    }
+    try{
+        const searchResults = await Memory.find({
+            userId:userId,
+            $or :[
+                {title:{$regex:query,$options:"i"}},
+                {story:{$regex:query,$options:"i"}},
+                {visitedLocation:{$regex:query,$options:"i"}},
+
+            ]
+        }).sort({isFavourite:-1});
+        res.status(200).json({stories:searchResults});
+    }catch (error) {
+        res.status(500).json({ error: true, message: error.message });
+    }
+});
+
+//filter by date range
+app.get("/stories/filter/",authenticateToken,async (req,res)=>{
+    const {startDate,endDate} = req.query;
+    const {userId} = req.user;
+    try{
+        //convert date from millis to date objects
+        const start = new Date(parseInt(startDate));
+        const end = new Date(parseInt(endDate));
+        const searchResults = await Memory.find({
+            userId:userId,
+            visitedDate:{$gte:start,$lte:end},
+        }).sort({isFavourite:-1});
+        res.status(200).json({stories:searchResults});
+
+    }catch (error) {
+        res.status(500).json({ error: true, message: error.message });
+    }
+});
 
 //serve static files from uploads and assets directory
 app.use("/uploads",express.static(path.join(__dirname,"uploads")));
