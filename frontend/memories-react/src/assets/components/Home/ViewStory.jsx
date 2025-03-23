@@ -2,8 +2,20 @@ import React from 'react';
 import { MdDeleteOutline, MdDateRange, MdUpdate, MdClose, MdLocationOn } from "react-icons/md";
 import moment from "moment";
 
-const ViewStory = ({ onClose, storyInfo,onEditClick }) => {
+const ViewStory = ({ onClose, storyInfo,onEditClick,onDeleteStory }) => {
     if (!storyInfo) return null; // Ensure storyInfo is available
+
+    const handleDeleteClick = () => {
+        console.log("Deleting Story:", storyInfo);  // Debugging Log
+        if (!storyInfo?._id) {
+            console.error("Story ID is missing!");
+            return;
+        }
+        if (window.confirm("Are you sure you want to delete this story?")) {
+            onDeleteStory(storyInfo._id);
+        }
+    };
+    
 
     return (
         <div className="relative bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
@@ -14,7 +26,7 @@ const ViewStory = ({ onClose, storyInfo,onEditClick }) => {
                     <button className="w-40 btn-small flex items-center justify-center" onClick={onEditClick}>
                         <MdUpdate className="text-lg" /> UPDATE STORY
                     </button>
-                    <button className="w-40 btn-small flex items-center justify-center">
+                    <button className="w-40 btn-small flex items-center justify-center" onClick={handleDeleteClick}>
                         <MdDeleteOutline className="text-lg" /> DELETE STORY
                     </button>
                     <button className="flex items-center justify-center" onClick={onClose}>

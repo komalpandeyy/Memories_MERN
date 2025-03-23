@@ -13,6 +13,8 @@ const Home = () => {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState(null);
   const [allStories, setAllStories] = useState([]);
+  const [filterType,setFilterType] = useState(''); 
+  const [searchQuery,setSearchQuery] = useState('');
   const [openAddEditModal, setOpenAddEditModal] = useState({
     isShown: false,
     type: "add",
@@ -43,14 +45,16 @@ const Home = () => {
   //get all stories
   const getAllStories = async () => {
     try {
-      const response = await axiosInstance.get("/get-all-stories");
-      if (response.data && response.data.stories) {
-        setAllStories(response.data.stories);
-      }
+        const response = await axiosInstance.get("/get-all-stories");
+        if (response.data && response.data.stories) {
+            console.log("📚 Stories fetched:", response.data.stories);
+            setAllStories(response.data.stories);
+        }
     } catch (error) {
-      console.error("An unexpected error occurred");
+        console.error("❌ Error fetching stories:", error);
     }
-  }
+};
+
 
   const handleEdit = (data) => {
     setOpenAddEditModal({
@@ -82,6 +86,61 @@ const Home = () => {
       console.error("Error updating favourite status:", error);
     }
   };
+
+  const handleDeleteClick = async (story) => {
+    if (!story || !story._id) {
+      console.error("Story data is not fully loaded or missing _id");
+      return;
+    }
+  
+    // Proceed only if the story has an _id
+    await deleteStory(story);
+  };
+  // Delete Story
+  const deleteStory = async (storyId) => {
+    if (!storyId) {
+      console.error("Error: Story ID is missing or undefined.");
+      return;
+  }
+
+  try {
+      await axiosInstance.delete(`/delete-story/${storyId}`);
+      //setAllStories(stories.filter(story => story._id !== storyId));
+       setAllStories((prevStories) => prevStories.filter(story => story._id !== storyId));
+       setOpenAddEditModal({ isShown: false, type: "add", data: null });
+       setOpenViewModal({ isShown: false, data: null });
+      toast.success("Story Deleted Successfully");
+  } catch (error) {
+      console.error("Error deleting story:", error);
+      toast.error("Failed to delete story");
+  }
+  };
+  
+    const onSearchStory = async (query)=>{
+    try {
+      const response =  await axiosInstance.get("/search-stories",{
+          params:{
+            query,
+          }
+        });
+
+        if(response.data && response.data.stories){
+          setFilterType("search");
+          setAllStories(response.data.stories);
+        }
+    }
+
+    catch (error) {
+        console.error("error", error);
+        
+    }
+    }
+   
+    const handleClearSearch = ()=>{
+      setFilterType("");
+      getAllStories();
+    }
+
   // Fetch user info when component mounts
   useEffect(() => {
     getAllStories();
@@ -90,7 +149,12 @@ const Home = () => {
 
   return (
     <div>
-      <Navbar userInfo={userInfo} />
+      <Navbar userInfo = {userInfo}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      onSearchNote={onSearchStory}
+      handleClearSearch = {handleClearSearch}
+      />
       {/* <h1>Welcome, {userInfo ? userInfo.fullName : "Guest"}!</h1> */}
       <div className="container mx-auto py-10">
         <div className="flex gap-7">
@@ -135,7 +199,8 @@ const Home = () => {
           type={openAddEditModal.type}
           storyInfo={openAddEditModal.data}
           onClose={() => setOpenAddEditModal({ isShown: false, type: "add", data: null })}
-          getAllStories={getAllStories}
+          setAllStories={setAllStories}
+          onDeleteStory={(storyId) => deleteStory(storyId)} 
         />
 
       </Modal>
@@ -162,6 +227,7 @@ const Home = () => {
             setOpenViewModal((prevState)=>({...prevState,isShown:false}));
             handleEdit(openViewModal.data||null);
           }}
+          onDeleteStory={(storyId) => deleteStory(storyId)} 
         />
 
       </Modal>

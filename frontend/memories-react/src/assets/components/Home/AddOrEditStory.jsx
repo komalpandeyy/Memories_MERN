@@ -8,14 +8,23 @@ import { toast } from 'react-toastify';
 import axiosInstance from '../utils/axiosInstance';
 import moment from "moment";
 
-const AddOrEditStory = ({ storyInfo, type, onClose, getAllStories }) => {
+const AddOrEditStory = ({ storyInfo, type, onClose, setAllStories ,onDeleteStory}) => {
   const [visitedDate, setVisitedDate] = useState(storyInfo && storyInfo.visitedDate ? new Date(storyInfo.visitedDate) : null);
   const [visitedLocation, setVisitedLocation] = useState(storyInfo?.visitedLocation || []);
   const [storyImg, setStoryImg] = useState(storyInfo?.imageUrl || null);
-  const [story, setStory] = useState(storyInfo?.story || null);
-  const [title, setTitle] = useState(storyInfo?.title || null);
+  const [story, setStory] = useState(storyInfo?.story || "");
+  const [title, setTitle] = useState(storyInfo?.title || "");
   const [error, setError] = useState("");
-
+  const handleDeleteClick = () => {
+    console.log("Deleting Story:", storyInfo);  // Debugging Log
+    if (!storyInfo?._id) {
+        console.error("Story ID is missing!");
+        return;
+    }
+    if (window.confirm("Are you sure you want to delete this story?")) {
+        onDeleteStory(storyInfo._id);
+    }
+};
   const updateStory = async () => {
     const storyId = storyInfo._id;
 
@@ -48,84 +57,139 @@ const AddOrEditStory = ({ storyInfo, type, onClose, getAllStories }) => {
 
       if (response.data && response.data.story) {
         toast.success("Story Updated Successfully");
+        setAllStories((prevStories) =>
+          prevStories.map((s) =>
+              s._id === storyId ? response.data.story : s
+          )
+      );
+        
 
-        // Refresh stories
+        // ✅ Close modal after 2 seconds
+        setTimeout(() => {
+            onClose();
+        }, 2000);
+
         getAllStories();
-
-        // Close modal or form
-        onClose();
       }
     } catch (error) {
       if (error.response && error.response.data && error.response.data.message) {
         setError(error.response.data.message);
       }
       else {
-        setError("an unexpected error occurred");
+        setError("");
       }
     }
   }
 
   const addNewStory = async () => {
     try {
-      let imageUrl = "";
-      if (storyImg) {
-        const imgUploadRes = await uploadImage(storyImg);
-        // Get image URL
-        imageUrl = imgUploadRes.imageUrl || "";
-      }
+        let imageUrl = "";
 
-      const response = await axiosInstance.post("/add-story", {
-        title,
-        story,
-        imageUrl: imageUrl || "",
-        visitedLocation,
-        visitedDate: visitedDate
-          ? moment(visitedDate).valueOf()
-          : moment().valueOf(),
-      });
+        console.log("Uploading image..."); // ✅ Debugging
+        if (storyImg && typeof storyImg === "object") {
+            const imgUploadRes = await uploadImage(storyImg);
+            imageUrl = imgUploadRes.imageUrl || "";
+        } else {
+            imageUrl = storyImg;  // Keep existing URL if editing
+        }
 
-      if (response.data && response.data.story) {
-        toast.success("Story Added Successfully");
+        console.log("Sending request to add story..."); // ✅ Debugging
+        const response = await axiosInstance.post("/add-story", {
+            title,
+            story,
+            imageUrl,
+            visitedLocation,
+            visitedDate: visitedDate ? moment(visitedDate).valueOf() : moment().valueOf(),
+        });
+        console.log("Full API Response:", response.data); 
+        if (response.data && response.data.story) {
+            console.log("Story added successfully:", response.data.story); // ✅ Debugging
 
-        // Refresh stories
-        getAllStories();
+            // ✅ Show toast notification before closing
+            toast.success("Story Added Successfully", { autoClose: 2000 });
 
-        // Close modal or form
-        onClose();
-      }
+            // ✅ Update stories instantly without refresh
+            setAllStories((prevStories) => [response.data.story, ...prevStories]);
+
+            // ✅ Close modal after 2 seconds
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        }
     } catch (error) {
-      if (error.response && error.response.data && error.response.data.message) {
-        setError(error.response.data.message);
-      }
-      else {
-        setError("an unexpected error occurred");
-      }
+        console.error("Error adding story:", error);
+        console.error("Error details:", error.response?.data || error.message);
+        setError(error.response?.data?.message || "An unexpected error occurred");
+        setTimeout(() => {
+          onClose();
+      }, 2000);
     }
-  }
+};
+
 
   const handleAddOrUpdateClick = async () => {
-    console.log("Input Data : ", { title, storyImg, story, visitedLocation, visitedDate });
+    console.log("Input Data:", { title, storyImg, story, visitedLocation, visitedDate });
+    
     if (!title) {
-      setError("Please enter the title");
-      return;
+        setError("Please enter the title");
+        return;
     }
     if (!story) {
-      setError("Please enter the story");
-      return;
+        setError("Please enter the story");
+        return;
     }
 
     setError("");
-    if (type === "edit") {
-      updateStory();
-    }
-    else {
-      addNewStory();
-    }
-  }
 
-  const handleDeleteStoryImg = () => {
-    setStoryImg(null);
-  };
+    if (type === "edit") {
+        await updateStory();  // Ensure it's awaited
+    } else {
+        await addNewStory();  // Ensure it's awaited
+    }
+};
+
+
+const handleDeleteStoryImg = async () => {
+  try {
+      if (!storyInfo?.imageUrl) {
+          toast.error("No image found to delete.");
+          return;
+      }
+      console.log("Deleting image:", storyInfo.imageUrl);
+      const deleteImgRes = await axiosInstance.delete("/delete-image", {
+          params: { imageUrl: storyInfo.imageUrl },
+      });
+      console.log("Deleting image:", deleteImgRes);
+      if (deleteImgRes.status !== 200) {
+          toast.error("Failed to delete image");
+          return;
+      }
+
+      // Update story with no image
+      const storyId = storyInfo._id;
+      const updatedStoryData = {
+          title,
+          story,
+          visitedLocation,
+          visitedDate: moment().valueOf(),
+          imageUrl: "",
+      };
+
+      const response = await axiosInstance.put(`/edit-story/${storyId}`, updatedStoryData);
+
+      if (response.status === 200) {
+          setStoryImg(null); 
+          toast.success("Image deleted successfully");
+      } else {
+          toast.error("Failed to update story");
+      }
+  } catch (error) {
+      toast.error("Error deleting image");
+      console.error("Error in handleDeleteStoryImg:", error);
+  }
+};
+
+  
   return (
     <div className='relative'>
       <div className='flex items-center justify-between '>
@@ -144,7 +208,7 @@ const AddOrEditStory = ({ storyInfo, type, onClose, getAllStories }) => {
               <button className="w-40 btn-small flex items-center justify-center" onClick={handleAddOrUpdateClick}>
                 <MdUpdate className="text-lg" /> UPDATE STORY
               </button>
-              <button className="w-40 btn-small flex items-center justify-center" onClick={handleAddOrUpdateClick}>
+              <button className="w-40 btn-small flex items-center justify-center" onClick={handleDeleteClick}>
                 <MdDeleteOutline className="text-lg" /> DELETE STORY
               </button>
             </div>}
