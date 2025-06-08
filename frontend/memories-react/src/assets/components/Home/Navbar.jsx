@@ -26,12 +26,12 @@ const Navbar = ({userInfo,searchQuery,setSearchQuery,onSearchNote,handleClearSea
             <img
                 src="https://www.freelogovector.com/wp-content/uploads/2017/06/44%20-%20PNG%20memories%20copy.jpg"
                 alt="logo"
-                className=" top-4 left-4 h-14 w-auto"
+                className=" top-4 left-4 h-17 w-auto"
             />
 
             {/* <p>{userInfo.fullName}</p> */}
             {isToken &&(
-                <>
+                <div className='flex justify-end'>
                     <SearchBar value = {searchQuery} onChange={
                         ({target})=>{
                             setSearchQuery(target.value);
@@ -41,7 +41,7 @@ const Navbar = ({userInfo,searchQuery,setSearchQuery,onSearchNote,handleClearSea
                     onClearSearch={onClearSearch}
                     />
                     <ProfileInfo userInfo = {userInfo} onLogout = {onLogout}/>
-                </>
+                </div>
             )}
             
         </div>

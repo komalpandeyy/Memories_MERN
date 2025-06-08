@@ -133,9 +133,9 @@ app.post("/add-story",authenticateToken,async (req,res)=>{
             }
         );
 
-        await Story.save();
+        const savedStory = await Story.save();
         res.status(201).json({
-            story:Memory,
+            story:savedStory,
             message:"added successfully"
         });
     }
@@ -165,7 +165,7 @@ app.post("/image-upload",upload.single("image"),async (req,res)=>{
         }
 
         const imageUrl = `http://localhost:8000/uploads/${req.file.filename}`;
-        res.status(201).json({imageUrl});
+        res.status(200).json({imageUrl});
     }
     catch{
         res.status(500).json({error:true,message:"error.message"});
@@ -251,7 +251,7 @@ app.delete("/delete-story/:id", authenticateToken, async (req, res) => {
         const imageUrl = story.imageUrl;
         const fileName = path.basename(imageUrl);
 
-        const filePath = path.join(__dirname,'uploads',filename);
+        const filePath = path.join(__dirname,'uploads',fileName);
         fs.unlink(filePath,(err)=>{
             if(err){
                 console.error("failed to delete");

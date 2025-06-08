@@ -199,10 +199,10 @@ const handleDeleteStoryImg = async () => {
       </div>
 
       <div>
-        <div className='w-200 mx-73 flex items-center gap-2 p-3 text-sm font-bold rounded-l-lg'>
+        <div className='w-200 mx-73 flex items-center gap-2 p-3 font-bold rounded-l-lg'>
           {type === 'add' ?
-            <button className="w-40 btn-small flex items-center justify-center" onClick={handleAddOrUpdateClick}>
-              <MdAdd className="text-lg" /> ADD STORY
+            <button className="w-40 btn-small flex items-center justify-center font-poppins" onClick={handleAddOrUpdateClick}>
+              <MdAdd className="text-lg" /> Add Story
             </button> :
             <div className="flex items-center mx-0">
               <button className="w-40 btn-small flex items-center justify-center" onClick={handleAddOrUpdateClick}>
