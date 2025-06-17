@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const upload = require("./multer");
 const config = require("../backend/config.json");
-const bcrypt = require("bcrypt");
+const bcryptjs = require("bcryptjs");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -33,7 +33,7 @@ app.post("/create-account",async (req,res)=>{
         return res.status(400).json({error:true,message:"User Already Exists.Please Login."});
     }
 
-    const hashedPassword = await bcrypt.hash(password,10);
+    const hashedPassword = await bcryptjs.hash(password,10);
 
     const user = new User({
         fullName,
@@ -74,7 +74,7 @@ app.post("/login",async (req,res)=>{
     }
 
     //check password authentication
-    const isPasswordValid = await bcrypt.compare(password,user.password);
+    const isPasswordValid = await bcryptjs.compare(password,user.password);
     if(!isPasswordValid){
         res.status(400).json({message:"Invalid credentials"});
     }
