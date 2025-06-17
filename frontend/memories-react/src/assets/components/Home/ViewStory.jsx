@@ -21,12 +21,12 @@ const ViewStory = ({ onClose, storyInfo,onEditClick,onDeleteStory }) => {
         <div className="relative bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
             {/* Top Buttons */}
             <div className="flex items-center justify-between mb-4">
-                <h5 className="text-xl font-medium text-slate-700">View Story</h5>
+                <h5 className="text-xl font-medium text-slate-700 px-8">View Story</h5>
                 <div className="flex space-x-2">
-                    <button className="w-40 btn-small flex items-center justify-center" onClick={onEditClick}>
+                    <button className="px-2 w-40 btn-small flex items-center justify-center" onClick={onEditClick}>
                         <MdUpdate className="text-lg" /> UPDATE STORY
                     </button>
-                    <button className="w-40 btn-small flex items-center justify-center" onClick={handleDeleteClick}>
+                    <button className="px-2 w-40 btn-small flex items-center justify-center" onClick={handleDeleteClick}>
                         <MdDeleteOutline className="text-lg" /> DELETE STORY
                     </button>
                     <button className="flex items-center justify-center" onClick={onClose}>
